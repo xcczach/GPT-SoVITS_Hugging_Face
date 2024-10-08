@@ -3,9 +3,8 @@ import os
 import re
 from g2p_en import G2p
 
-from string import punctuation
 
-import symbols
+from . import symbols
 
 current_file_path = os.path.dirname(__file__)
 CMU_DICT_PATH = os.path.join(current_file_path, "cmudict.rep")

@@ -6,8 +6,6 @@ from .utils import make_pad_mask
 from .utils import (
     topk_sampling,
     sample,
-    logits_to_probs,
-    multinomial_sample_one_no_sync,
     dpo_loss,
     make_reject_y, 
     get_batch_logps

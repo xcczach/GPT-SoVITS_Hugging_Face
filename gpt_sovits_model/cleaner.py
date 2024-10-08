@@ -1,4 +1,4 @@
-import chinese, japanese, symbols, english
+from . import chinese, japanese, symbols, english
 from .symbols import cleaned_text_to_sequence
 
 language_module_map = {"zh": chinese, "ja": japanese, "en": english}
