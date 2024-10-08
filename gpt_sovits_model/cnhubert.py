@@ -12,16 +12,12 @@ from transformers import (
 import utils
 import torch.nn as nn
 
-cnhubert_base_path = None
-
-
 class CNHubert(nn.Module):
     def __init__(self):
         super().__init__()
-        self.model = HubertModel.from_pretrained(cnhubert_base_path)
-        self.feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(
-            cnhubert_base_path
-        )
+    def load(self, path: str):
+        self.model = HubertModel.from_pretrained(path)
+        self.feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(path)
 
     def forward(self, x):
         input_values = self.feature_extractor(
