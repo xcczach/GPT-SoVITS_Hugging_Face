@@ -346,6 +346,33 @@ class GPTSoVITSModel(PreTrainedModel):
         self.is_half = config.is_half  # 半精度推理
         self.dtype=torch.float16 if self.is_half == True else torch.float32 #【补】
 
+        self.ssl_model = cnhubert.CNHubert(config._hubert_config_dict, config._hubert_extractor_config_dict)
+        self.bert_model = AutoModelForMaskedLM.from_config(config._bert_config_dict)
+        self.tokenizer = AutoTokenizer.from_pretrained(config._name_or_path, trust_remote_code=True)
+        self.hps = DictToAttrRecursive(config._hps_dict)
+        self.hps.model.semantic_frame_rate = "25hz"
+        self.gpt_config = config._gpt_config_dict
+        self.vq_model = SynthesizerTrn(
+        self.hps.data.filter_length // 2 + 1,
+        self.hps.train.segment_size // self.hps.data.hop_length,
+        n_speakers=self.hps.data.n_speakers,
+        **self.hps.model)
+        self.t2s_model = Text2SemanticLightningModule(self.gpt_config, "ojbk", is_train=False)
+        if self.is_half:
+            self.ssl_model = self.ssl_model.half().to(device)
+            self.bert_model = self.bert_model.half().to(device)
+            self.vq_model = self.vq_model.half().to(device)
+            self.t2s_model = self.t2s_model.half().to(device)
+        else:
+            self.ssl_model = self.ssl_model.to(device)
+            self.bert_model = self.bert_model.to(device)
+            self.vq_model = self.vq_model.to(device)
+            self.t2s_model = self.t2s_model.to(device)
+        self.vq_model.eval()
+        self.ssl_model.eval()
+        self.t2s_model.eval()
+
+
 
     def get_cleaned_text_final(self,text,language):
         """

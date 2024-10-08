@@ -7,17 +7,18 @@ logging.getLogger("numba").setLevel(logging.WARNING)
 from transformers import (
     Wav2Vec2FeatureExtractor,
     HubertModel,
+    HubertConfig,
+    AutoConfig
 )
 
 import utils
 import torch.nn as nn
 
 class CNHubert(nn.Module):
-    def __init__(self):
+    def __init__(self, hubert_config_dict: dict[str, any], extractor_config_dict: dict[str, any]):
         super().__init__()
-    def load(self, path: str):
-        self.model = HubertModel.from_pretrained(path)
-        self.feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(path)
+        self.model = HubertModel(HubertConfig.from_dict(hubert_config_dict))
+        self.feature_extractor = Wav2Vec2FeatureExtractor.from_dict(extractor_config_dict)
 
     def forward(self, x):
         input_values = self.feature_extractor(
@@ -58,12 +59,6 @@ class CNHubert(nn.Module):
 #         return feats
 
 
-def get_model():
-    model = CNHubert()
-    model.eval()
-    return model
-
-
 # def get_large_model():
 #     model = CNHubertLarge()
 #     model.eval()
@@ -79,18 +74,3 @@ def get_model():
 #     model.eval()
 #     return model
 
-
-def get_content(hmodel, wav_16k_tensor):
-    with torch.no_grad():
-        feats = hmodel(wav_16k_tensor)
-    return feats.transpose(1, 2)
-
-
-if __name__ == "__main__":
-    model = get_model()
-    src_path = "/Users/Shared/原音频2.wav"
-    wav_16k_tensor = utils.load_wav_to_torch_and_resample(src_path, 16000)
-    model = model
-    wav_16k_tensor = wav_16k_tensor
-    feats = get_content(model, wav_16k_tensor)
-    print(feats.shape)
