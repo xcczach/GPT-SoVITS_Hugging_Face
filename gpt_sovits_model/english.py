@@ -194,7 +194,11 @@ def get_dict():
     return g2p_dict
 
 
-eng_dict = get_dict()
+_eng_dict = None
+def eng_dict():
+    if _eng_dict is None:
+        _eng_dict = get_dict()
+    return _eng_dict
 
 
 def text_normalize(text):
@@ -206,8 +210,8 @@ def g2p(text):
     phones = []
     words = re.split(r"([,;.\-\?\!\s+])", text)
     for w in words:
-        if w.upper() in eng_dict:
-            phns = eng_dict[w.upper()]
+        if w.upper() in eng_dict():
+            phns = eng_dict()[w.upper()]
             for ph in phns:
                 phones += ph
         else:

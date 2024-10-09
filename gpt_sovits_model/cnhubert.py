@@ -11,7 +11,6 @@ from transformers import (
     AutoConfig
 )
 
-import utils
 import torch.nn as nn
 
 class CNHubert(nn.Module):

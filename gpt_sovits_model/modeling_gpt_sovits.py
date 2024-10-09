@@ -342,6 +342,14 @@ class GPTSoVITSModel(PreTrainedModel):
     def __init__(self, config: GPTSoVITSConfig):
         super().__init__(config)
         self.name_or_path = config.name_or_path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        for file in ["opencpop-strict.txt","cmudict-fast.rep","cmudict.rep","engdict-hot.rep"]:
+            hf_hub_download(
+                repo_id=self.name_or_path,
+                filename=file,
+                repo_type="model",
+            )
+
         self.prompt_language = config.prompt_language
         device = config.device
         if isinstance(device, str):
@@ -381,13 +389,13 @@ class GPTSoVITSModel(PreTrainedModel):
             repo_id=self.name_or_path,
             filename="ref.wav",
             repo_type="model",
-            local_dir = os.path.dirname(os.path.abspath(__file__))
+            local_dir = current_dir
         )
         self.prompt_text_path = hf_hub_download(
             repo_id=self.name_or_path,
             filename="ref.txt",
             repo_type="model",
-            local_dir = os.path.dirname(os.path.abspath(__file__))
+            local_dir = current_dir
         )
         self.refer = get_spepc(self.hps, self.ref_wav_path)
         

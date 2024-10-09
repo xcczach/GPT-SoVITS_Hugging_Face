@@ -11,10 +11,14 @@ from .text_normlization import TextNormalizer
 normalizer = lambda x: cn2an.transform(x, "an2cn")
 
 current_file_path = os.path.dirname(__file__)
-pinyin_to_symbol_map = {
-    line.split("\t")[0]: line.strip().split("\t")[1]
-    for line in open(os.path.join(current_file_path, "opencpop-strict.txt")).readlines()
-}
+_pinyin_to_symbol_map = None
+def pinyin_to_symbol_map():
+    if _pinyin_to_symbol_map is None:
+        _pinyin_to_symbol_map = {
+            line.split("\t")[0]: line.strip().split("\t")[1]
+            for line in open(os.path.join(current_file_path, "opencpop-strict.txt")).readlines()
+        }
+    return _pinyin_to_symbol_map
 
 import jieba_fast.posseg as psg
 
@@ -138,8 +142,8 @@ def _g2p(segments):
                         if pinyin[0] in single_rep_map.keys():
                             pinyin = single_rep_map[pinyin[0]] + pinyin[1:]
 
-                assert pinyin in pinyin_to_symbol_map.keys(), (pinyin, seg, raw_pinyin)
-                new_c, new_v = pinyin_to_symbol_map[pinyin].split(" ")
+                assert pinyin in pinyin_to_symbol_map().keys(), (pinyin, seg, raw_pinyin)
+                new_c, new_v = pinyin_to_symbol_map()[pinyin].split(" ")
                 new_v = new_v + tone
                 phone = [new_c, new_v]
                 word2ph.append(len(phone))
