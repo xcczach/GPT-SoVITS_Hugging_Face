@@ -25,5 +25,5 @@ class GPTSoVITSConfig(PretrainedConfig):
         self._bert_config_dict = _bert_config_dict
         self._hps_dict = _hps_dict
         self._gpt_config_dict = _gpt_config_dict
-        
+
         super().__init__(**kwargs)
