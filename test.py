@@ -11,3 +11,4 @@ model_config = GPTSoVITSConfig(prompt_language="zh",device="cpu",is_half=True,
                                _hubert_config_dict=hubert_model.config.to_dict(),
                                _hubert_extractor_config_dict=extractor.to_dict(),
 )
+model = GPTSoVITSModel(model_config)

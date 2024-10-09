@@ -343,22 +343,19 @@ class GPTSoVITSModel(PreTrainedModel):
         super().__init__(config)
         self.name_or_path = config.name_or_path
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        for file in ["opencpop-strict.txt","cmudict-fast.rep","cmudict.rep","engdict-hot.rep"]:
-            hf_hub_download(
-                repo_id=self.name_or_path,
-                filename=file,
-                repo_type="model",
-            )
+        try:
+            for file in ["opencpop-strict.txt","cmudict-fast.rep","cmudict.rep","engdict-hot.rep"]:
+                hf_hub_download(
+                    repo_id=self.name_or_path,
+                    filename=file,
+                    repo_type="model",
+                    local_dir=current_dir
+                )
+        except:
+            print("Download not executed: maybe under dev mode, please put the files in current directory")
+            pass
 
         self.prompt_language = config.prompt_language
-        device = config.device
-        if isinstance(device, str):
-            device = torch.device(device)
-        elif isinstance(device, int):
-            device = torch.device(f"cuda:{device}")
-        self.device = device
-        self.is_half = config.is_half  # 半精度推理
-        self.dtype=torch.float16 if self.is_half == True else torch.float32 #【补】
 
         self.ssl_model = cnhubert.CNHubert(config._hubert_config_dict, config._hubert_extractor_config_dict)
         self.bert_model = AutoModelForMaskedLM.from_config(config._bert_config_dict)
@@ -372,31 +369,23 @@ class GPTSoVITSModel(PreTrainedModel):
         n_speakers=self.hps.data.n_speakers,
         **self.hps.model)
         self.t2s_model = Text2SemanticLightningModule(self.gpt_config, "ojbk", is_train=False)
-        if self.is_half:
-            self.ssl_model = self.ssl_model.half().to(device)
-            self.bert_model = self.bert_model.half().to(device)
-            self.vq_model = self.vq_model.half().to(device)
-            self.t2s_model = self.t2s_model.half().to(device)
-        else:
-            self.ssl_model = self.ssl_model.to(device)
-            self.bert_model = self.bert_model.to(device)
-            self.vq_model = self.vq_model.to(device)
-            self.t2s_model = self.t2s_model.to(device)
-        self.vq_model.eval()
-        self.ssl_model.eval()
-        self.t2s_model.eval()
-        self.ref_wav_path = hf_hub_download(
-            repo_id=self.name_or_path,
-            filename="ref.wav",
-            repo_type="model",
-            local_dir = current_dir
-        )
-        self.prompt_text_path = hf_hub_download(
-            repo_id=self.name_or_path,
-            filename="ref.txt",
-            repo_type="model",
-            local_dir = current_dir
-        )
+        try:
+            self.ref_wav_path = hf_hub_download(
+                repo_id=self.name_or_path,
+                filename="ref.wav",
+                repo_type="model",
+                local_dir = current_dir
+            )
+            self.prompt_text_path = hf_hub_download(
+                repo_id=self.name_or_path,
+                filename="ref.txt",
+                repo_type="model",
+                local_dir = current_dir
+            )
+        except:
+            self.ref_wav_path = os.path.join(current_dir, "ref.wav")
+            self.prompt_text_path = os.path.join(current_dir, "ref.txt")
+            print("Download not executed: maybe under dev mode, please put the files in current directory")
         self.refer = get_spepc(self.hps, self.ref_wav_path)
         
 
