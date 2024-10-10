@@ -1,5 +1,5 @@
-from gpt_sovits_model.configuration_gpt_sovits import GPTSoVITSConfig
-from gpt_sovits_model.modeling_gpt_sovits import GPTSoVITSModel
+from yags_model.configuration_yags import GPTSoVITSConfig
+from yags_model.modeling_yags import GPTSoVITSModel
 from transformers import HubertModel, Wav2Vec2FeatureExtractor, AutoModelForMaskedLM, AutoTokenizer
 import torch
 from contextlib import contextmanager
@@ -19,7 +19,7 @@ def hparams_to_dict(hparams: HParams):
 
 @contextmanager
 def load_files_temp():
-    target_dir = "gpt_sovits_model"
+    target_dir = "yags_model"
     to_upload_dir = "to_upload"
     for file in os.listdir(to_upload_dir):
         shutil.copy(os.path.join(to_upload_dir, file), os.path.join(target_dir, file))
@@ -53,5 +53,5 @@ with load_files_temp():
     model.to("cuda").half()
     tokenizer = AutoTokenizer.from_pretrained(bert_path)
 
-    speech_arr, sr = model.infer("我才不是一袋猫粮呢！",tokenizer=tokenizer)
+    speech_arr, sr = model.infer("我真的不是一袋猫粮呢！",tokenizer=tokenizer)
     sf.write("output.wav", speech_arr, sr)

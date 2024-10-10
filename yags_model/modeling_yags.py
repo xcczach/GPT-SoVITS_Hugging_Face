@@ -1,5 +1,5 @@
 from transformers import PreTrainedModel
-from .configuration_gpt_sovits import GPTSoVITSConfig
+from .configuration_yags import GPTSoVITSConfig
 
 import os
 import re
@@ -12,7 +12,7 @@ from transformers import AutoModelForMaskedLM, BertConfig
 
 from .t2s_lightning_module import \
     Text2SemanticLightningModule
-from . import cnhubert
+from .cnhubert import CNHubert
 from .mel_processing import spectrogram_torch
 # from io import BytesIO
 from .models import SynthesizerTrn
@@ -313,7 +313,7 @@ class GPTSoVITSModel(PreTrainedModel):
 
         self.prompt_language = config.prompt_language
 
-        self.ssl_model = cnhubert.CNHubert(config._hubert_config_dict, config._hubert_extractor_config_dict)
+        self.ssl_model = CNHubert(config._hubert_config_dict, config._hubert_extractor_config_dict)
         self.bert_model = AutoModelForMaskedLM.from_config(BertConfig.from_dict(config._bert_config_dict))
         self.hps = DictToAttrRecursive(config._hps_dict)
         self.hps.model.semantic_frame_rate = "25hz"

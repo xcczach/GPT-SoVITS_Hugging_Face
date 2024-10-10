@@ -1,4 +1,7 @@
 from . import chinese, japanese, symbols, english
+from .chinese import text_normalize
+from .japanese import text_normalize
+from .english import text_normalize
 from .symbols import cleaned_text_to_sequence
 
 language_module_map = {"zh": chinese, "ja": japanese, "en": english}

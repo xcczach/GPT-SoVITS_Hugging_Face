@@ -1,5 +1,5 @@
-from gpt_sovits_model.configuration_gpt_sovits import GPTSoVITSConfig
-from gpt_sovits_model.modeling_gpt_sovits import GPTSoVITSModel
+from yags_model.configuration_yags import GPTSoVITSConfig
+from yags_model.modeling_yags import GPTSoVITSModel
 from transformers import HubertModel, Wav2Vec2FeatureExtractor, AutoModelForMaskedLM, AutoTokenizer
 import torch
 from contextlib import contextmanager
@@ -22,7 +22,7 @@ def hparams_to_dict(hparams: HParams):
 
 @contextmanager
 def load_files_temp():
-    target_dir = "gpt_sovits_model"
+    target_dir = "yags_model"
     to_upload_dir = "to_upload"
     for file in os.listdir(to_upload_dir):
         shutil.copy(os.path.join(to_upload_dir, file), os.path.join(target_dir, file))
@@ -66,6 +66,12 @@ api = HfApi()
 
 api.upload_folder(
     folder_path="to_upload",
+    path_in_repo="",
+    repo_id=repo_id,
+    repo_type="model",
+)
+api.upload_folder(
+    folder_path="yags_model",
     path_in_repo="",
     repo_id=repo_id,
     repo_type="model",

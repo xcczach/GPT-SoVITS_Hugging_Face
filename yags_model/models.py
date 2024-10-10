@@ -5,7 +5,8 @@ from torch.nn import functional as F
 
 from . import commons
 from . import modules
-from . import attentions
+from .modules import Log
+from .attentions import Encoder
 
 from torch.nn import Conv1d, ConvTranspose1d, Conv2d
 from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
@@ -194,7 +195,7 @@ class TextEncoder(nn.Module):
 
         self.ssl_proj = nn.Conv1d(768, hidden_channels, 1)
 
-        self.encoder_ssl = attentions.Encoder(
+        self.encoder_ssl = Encoder(
             hidden_channels,
             filter_channels,
             n_heads,
@@ -203,14 +204,14 @@ class TextEncoder(nn.Module):
             p_dropout,
         )
 
-        self.encoder_text = attentions.Encoder(
+        self.encoder_text = Encoder(
             hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
         )
         self.text_embedding = nn.Embedding(len(symbols.symbols), hidden_channels)
 
         self.mrte = MRTE()
 
-        self.encoder2 = attentions.Encoder(
+        self.encoder2 = Encoder(
             hidden_channels,
             filter_channels,
             n_heads,
@@ -757,7 +758,7 @@ class CodePredictor(nn.Module):
             ssl_dim, style_vector_dim=hidden_channels
         )
 
-        self.encoder = attentions.Encoder(
+        self.encoder = Encoder(
             hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
         )
 
