@@ -6,6 +6,16 @@ from contextlib import contextmanager
 import os
 import shutil
 import soundfile as sf
+from utils import HParams
+
+def hparams_to_dict(hparams: HParams):
+    result = {}
+    for key, value in hparams.items():
+        if isinstance(value, HParams):
+            result[key] = hparams_to_dict(value)
+        else:
+            result[key] = value
+    return result
 
 @contextmanager
 def load_files_temp():
@@ -27,11 +37,12 @@ with load_files_temp():
     bert_model = AutoModelForMaskedLM.from_pretrained(bert_path)
     dict_s1 = torch.load("./ckpts/tts_model/sunshine_girl.ckpt", map_location="cpu")
     dict_s2 = torch.load("./ckpts/tts_model/sunshine_girl.pth", map_location="cpu")
+    hps_dict = hparams_to_dict(dict_s2["config"])
     model_config = GPTSoVITSConfig(prompt_language="zh",
                                 _hubert_config_dict=hubert_model.config.to_dict(),
                                 _hubert_extractor_config_dict=extractor.to_dict(),
                                 _bert_config_dict=bert_model.config.to_dict(),
-                                _hps_dict=dict_s2["config"],
+                                _hps_dict=hps_dict,
                                 _gpt_config_dict=dict_s1["config"],
     )
     model = GPTSoVITSModel(model_config)
@@ -42,5 +53,5 @@ with load_files_temp():
     model.to("cuda").half()
     tokenizer = AutoTokenizer.from_pretrained(bert_path)
 
-    speech_arr, sr = model.infer("我是一袋猫粮",tokenizer=tokenizer)
+    speech_arr, sr = model.infer("我才不是一袋猫粮呢！",tokenizer=tokenizer)
     sf.write("output.wav", speech_arr, sr)

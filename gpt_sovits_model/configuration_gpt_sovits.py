@@ -7,7 +7,7 @@ class GPTSoVITSConfig(PretrainedConfig):
 
     def __init__(
             self,
-            prompt_language: str,
+            prompt_language: str="zh",
             _hubert_config_dict: dict[str, any] = None,
             _hubert_extractor_config_dict: dict[str, any] = None,
             _bert_config_dict: dict[str, any] = None,
