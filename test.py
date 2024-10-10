@@ -35,8 +35,11 @@ with load_files_temp():
                                 _gpt_config_dict=dict_s1["config"],
     )
     model = GPTSoVITSModel(model_config)
+    model.bert_model.load_state_dict(bert_model.state_dict())
+    model.ssl_model.model.load_state_dict(hubert_model.state_dict())
     model.vq_model.load_state_dict(dict_s2["weight"], strict=False)
     model.t2s_model.load_state_dict(dict_s1["weight"])
+    model.to("cuda").half()
     tokenizer = AutoTokenizer.from_pretrained(bert_path)
 
     speech_arr, sr = model.infer("我是一袋猫粮",tokenizer=tokenizer)
