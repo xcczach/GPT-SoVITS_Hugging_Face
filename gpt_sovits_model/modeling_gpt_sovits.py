@@ -8,7 +8,7 @@ import torch
 import librosa
 import numpy as np
 import soundfile as sf
-from transformers import AutoModelForMaskedLM, AutoTokenizer
+from transformers import AutoModelForMaskedLM, BertConfig
 
 from .t2s_lightning_module import \
     Text2SemanticLightningModule
@@ -283,50 +283,6 @@ def cut5(inp):
     opt = "\n".join(mergeitems)
     return opt
 
-
-def load_model(cnhubert_base_path, bert_path, dict_s1, dict_s2, is_half, device):
-    # 加载模型
-    tokenizer = AutoTokenizer.from_pretrained(bert_path)
-    bert_model = AutoModelForMaskedLM.from_pretrained(bert_path)
-    if is_half:
-        bert_model = bert_model.half().to(device)
-    else:
-        bert_model = bert_model.to(device)
-
-    hps = dict_s2["config"]
-    hps = DictToAttrRecursive(hps)
-    hps.model.semantic_frame_rate = "25hz"
-
-    config = dict_s1["config"]
-    ssl_model = cnhubert.get_model()
-    ssl_model.load(cnhubert_base_path)
-    if is_half:
-        ssl_model = ssl_model.half().to(device)
-    else:
-        ssl_model = ssl_model.to(device)
-
-    vq_model = SynthesizerTrn(
-        hps.data.filter_length // 2 + 1,
-        hps.train.segment_size // hps.data.hop_length,
-        n_speakers=hps.data.n_speakers,
-        **hps.model)
-    if is_half:
-        vq_model = vq_model.half().to(device)
-    else:
-        vq_model = vq_model.to(device)
-    vq_model.eval()
-    # 超长日志输出-missing_keys
-    vq_model.load_state_dict(dict_s2["weight"], strict=False)
-
-    t2s_model = Text2SemanticLightningModule(config, "ojbk", is_train=False)
-    t2s_model.load_state_dict(dict_s1["weight"])
-    if is_half:
-        t2s_model = t2s_model.half()
-    t2s_model = t2s_model.to(device)
-    t2s_model.eval()
-
-    return tokenizer, bert_model, hps, config, ssl_model, vq_model, t2s_model
-
 def get_spepc(hps, filename):
     audio = load_audio(filename, int(hps.data.sampling_rate))
     audio = torch.FloatTensor(audio)
@@ -358,8 +314,7 @@ class GPTSoVITSModel(PreTrainedModel):
         self.prompt_language = config.prompt_language
 
         self.ssl_model = cnhubert.CNHubert(config._hubert_config_dict, config._hubert_extractor_config_dict)
-        self.bert_model = AutoModelForMaskedLM.from_config(config._bert_config_dict)
-        self.tokenizer = AutoTokenizer.from_pretrained(config._name_or_path, trust_remote_code=True)
+        self.bert_model = AutoModelForMaskedLM.from_config(BertConfig.from_dict(config._bert_config_dict))
         self.hps = DictToAttrRecursive(config._hps_dict)
         self.hps.model.semantic_frame_rate = "25hz"
         self.gpt_config = config._gpt_config_dict
@@ -408,7 +363,7 @@ class GPTSoVITSModel(PreTrainedModel):
     
     def get_bert_inf(self, phones, word2ph, norm_text, language):
         device = self.device # 【补】
-        is_half = self.is_half # 【补】
+        is_half = self.dtype == torch.float16 # 【补】
         
         language=language.replace("all_","")
         if language == "zh":
@@ -442,13 +397,13 @@ class GPTSoVITSModel(PreTrainedModel):
 
         return bert
     
-    def get_bert_feature(self, text, word2ph):
+    def get_bert_feature(self, text, word2ph, tokenizer):
 
-        is_half = self.is_half # 【补】
+        is_half = self.dtype == torch.float16 # 【补】
         device = self.device # 【补】
 
         with torch.no_grad():
-            inputs = self.tokenizer(text, return_tensors="pt")
+            inputs = tokenizer(text, return_tensors="pt")
             for i in inputs:
                 inputs[i] = inputs[i].to(device)  #####输入是long不用管精度问题，精度随bert_model
             res = self.bert_model(**inputs, output_hidden_states=True)
@@ -503,7 +458,7 @@ class GPTSoVITSModel(PreTrainedModel):
     
     def get_bert_inf(self, phones, word2ph, norm_text, language):
         device = self.device # 【补】
-        is_half = self.is_half # 【补】
+        is_half = self.dtype == torch.float16 # 【补】
         
         language=language.replace("all_","")
         if language == "zh":
@@ -536,29 +491,8 @@ class GPTSoVITSModel(PreTrainedModel):
         bert = torch.cat(bert_list, dim=1)
 
         return bert
-    
-    def get_bert_feature(self, text, word2ph):
 
-        is_half = self.is_half # 【补】
-        device = self.device # 【补】
-
-        with torch.no_grad():
-            inputs = self.tokenizer(text, return_tensors="pt")
-            for i in inputs:
-                inputs[i] = inputs[i].to(device)  #####输入是long不用管精度问题，精度随bert_model
-            res = self.bert_model(**inputs, output_hidden_states=True)
-            res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu()[1:-1]
-        assert len(word2ph) == len(text)
-        phone_level_feature = []
-        for i in range(len(word2ph)):
-            repeat_feature = res[i].repeat(word2ph[i], 1)
-            phone_level_feature.append(repeat_feature)
-        phone_level_feature = torch.cat(phone_level_feature, dim=0)
-        if(is_half==True):phone_level_feature=phone_level_feature.half()
-        
-        return phone_level_feature.T
-
-    def get_bert_final(self,phones, word2ph, text,language):
+    def get_bert_final(self,phones, word2ph, text,language, tokenizer):
         """
         根据语言 选择调用不同的函数来得到一个bert表示。
         需要输入Get_clean_text_final得到的文字素材
@@ -574,7 +508,7 @@ class GPTSoVITSModel(PreTrainedModel):
         elif language in {"zh", "ja","auto"}:
             bert = self.nonen_get_bert_inf(text, language)
         elif language == "all_zh":
-            bert = self.get_bert_feature(text, word2ph).to(device)
+            bert = self.get_bert_feature(text, word2ph, tokenizer).to(device)
         else:
             bert = torch.zeros((1024, len(phones))).to(device)
         return bert
@@ -605,7 +539,7 @@ class GPTSoVITSModel(PreTrainedModel):
 
         
         device = self.device
-        is_half = self.is_half
+        is_half = self.dtype == torch.float16
         dtype = self.dtype
 
         hz = 50

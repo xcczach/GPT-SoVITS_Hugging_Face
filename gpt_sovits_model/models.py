@@ -206,7 +206,7 @@ class TextEncoder(nn.Module):
         self.encoder_text = attentions.Encoder(
             hidden_channels, filter_channels, n_heads, n_layers, kernel_size, p_dropout
         )
-        self.text_embedding = nn.Embedding(len(symbols), hidden_channels)
+        self.text_embedding = nn.Embedding(len(symbols.symbols), hidden_channels)
 
         self.mrte = MRTE()
 
