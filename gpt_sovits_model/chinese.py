@@ -13,6 +13,7 @@ normalizer = lambda x: cn2an.transform(x, "an2cn")
 current_file_path = os.path.dirname(__file__)
 _pinyin_to_symbol_map = None
 def pinyin_to_symbol_map():
+    global _pinyin_to_symbol_map
     if _pinyin_to_symbol_map is None:
         _pinyin_to_symbol_map = {
             line.split("\t")[0]: line.strip().split("\t")[1]

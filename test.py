@@ -5,6 +5,7 @@ import torch
 from contextlib import contextmanager
 import os
 import shutil
+import soundfile as sf
 
 @contextmanager
 def load_files_temp():
@@ -26,7 +27,7 @@ with load_files_temp():
     bert_model = AutoModelForMaskedLM.from_pretrained(bert_path)
     dict_s1 = torch.load("./ckpts/tts_model/sunshine_girl.ckpt", map_location="cpu")
     dict_s2 = torch.load("./ckpts/tts_model/sunshine_girl.pth", map_location="cpu")
-    model_config = GPTSoVITSConfig(prompt_language="zh",device="cpu",is_half=True,
+    model_config = GPTSoVITSConfig(prompt_language="zh",
                                 _hubert_config_dict=hubert_model.config.to_dict(),
                                 _hubert_extractor_config_dict=extractor.to_dict(),
                                 _bert_config_dict=bert_model.config.to_dict(),
@@ -37,3 +38,6 @@ with load_files_temp():
     model.vq_model.load_state_dict(dict_s2["weight"], strict=False)
     model.t2s_model.load_state_dict(dict_s1["weight"])
     tokenizer = AutoTokenizer.from_pretrained(bert_path)
+
+    speech_arr, sr = model.infer("我是一袋猫粮",tokenizer=tokenizer)
+    sf.write("output.wav", speech_arr, sr)

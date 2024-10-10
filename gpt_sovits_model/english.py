@@ -196,6 +196,7 @@ def get_dict():
 
 _eng_dict = None
 def eng_dict():
+    global _eng_dict
     if _eng_dict is None:
         _eng_dict = get_dict()
     return _eng_dict

@@ -28,7 +28,7 @@ def clean_text(text, language):
         word2ph = None
 
     for ph in phones:
-        assert ph in symbols
+        assert ph in symbols.symbols
     return phones, word2ph, norm_text
 
 

@@ -376,27 +376,6 @@ class GPTSoVITSModel(PreTrainedModel):
 
         return bert
     
-    def nonen_get_bert_inf(self, text, language):
-        if(language!="auto"):
-            textlist, langlist = splite_en_inf(text, language)
-        else:
-            textlist=[]
-            langlist=[]
-            for tmp in LangSegment.getTexts(text):
-                langlist.append(tmp["lang"])
-                textlist.append(tmp["text"])
-        print(textlist)
-        print(langlist)
-        bert_list = []
-        for i in range(len(textlist)):
-            lang = langlist[i]
-            phones, word2ph, norm_text = clean_text_inf(textlist[i], lang)
-            bert = self.get_bert_inf(phones, word2ph, norm_text, lang)
-            bert_list.append(bert)
-        bert = torch.cat(bert_list, dim=1)
-
-        return bert
-    
     def get_bert_feature(self, text, word2ph, tokenizer):
 
         is_half = self.dtype == torch.float16 # 【补】
@@ -418,27 +397,6 @@ class GPTSoVITSModel(PreTrainedModel):
         
         return phone_level_feature.T
 
-    def get_bert_final(self,phones, word2ph, text,language):
-        """
-        根据语言 选择调用不同的函数来得到一个bert表示。
-        需要输入Get_clean_text_final得到的文字素材
-        -> bert
-            - get_bert_inf 针对纯英文”en”
-            - nonen_get_bert_inf 针对混合语种{"zh", "ja","auto"}
-            - get_bert_feature 针对纯中文”all_zh”
-        """
-        device = self.device # 【补】
-
-        if language == "en":
-            bert = self.get_bert_inf(phones, word2ph, text, language) # 【补】
-        elif language in {"zh", "ja","auto"}:
-            bert = self.nonen_get_bert_inf(text, language)
-        elif language == "all_zh":
-            bert = self.get_bert_feature(text, word2ph).to(device)
-        else:
-            bert = torch.zeros((1024, len(phones))).to(device)
-        return bert
-    
     # ======适配混合语种输出======
     # ===
     def get_cleaned_text_final(self,text,language):
@@ -456,13 +414,13 @@ class GPTSoVITSModel(PreTrainedModel):
             phones, word2ph, norm_text = nonen_clean_text_inf(text, language)
         return phones, word2ph, norm_text
     
-    def get_bert_inf(self, phones, word2ph, norm_text, language):
+    def get_bert_inf(self, phones, word2ph, norm_text, language, tokenizer):
         device = self.device # 【补】
         is_half = self.dtype == torch.float16 # 【补】
         
         language=language.replace("all_","")
         if language == "zh":
-            bert = self.get_bert_feature(norm_text, word2ph).to(device)#.to(dtype)
+            bert = self.get_bert_feature(norm_text, word2ph,tokenizer).to(device)#.to(dtype)
         else:
             bert = torch.zeros(
                 (1024, len(phones)),
@@ -471,7 +429,7 @@ class GPTSoVITSModel(PreTrainedModel):
 
         return bert
     
-    def nonen_get_bert_inf(self, text, language):
+    def nonen_get_bert_inf(self, text, language, tokenizer):
         if(language!="auto"):
             textlist, langlist = splite_en_inf(text, language)
         else:
@@ -486,7 +444,7 @@ class GPTSoVITSModel(PreTrainedModel):
         for i in range(len(textlist)):
             lang = langlist[i]
             phones, word2ph, norm_text = clean_text_inf(textlist[i], lang)
-            bert = self.get_bert_inf(phones, word2ph, norm_text, lang)
+            bert = self.get_bert_inf(phones, word2ph, norm_text, lang,tokenizer)
             bert_list.append(bert)
         bert = torch.cat(bert_list, dim=1)
 
@@ -504,9 +462,9 @@ class GPTSoVITSModel(PreTrainedModel):
         device = self.device # 【补】
 
         if language == "en":
-            bert = self.get_bert_inf(phones, word2ph, text, language) # 【补】
+            bert = self.get_bert_inf(phones, word2ph, text, language, tokenizer) # 【补】
         elif language in {"zh", "ja","auto"}:
-            bert = self.nonen_get_bert_inf(text, language)
+            bert = self.nonen_get_bert_inf(text, language, tokenizer)
         elif language == "all_zh":
             bert = self.get_bert_feature(text, word2ph, tokenizer).to(device)
         else:
@@ -516,12 +474,12 @@ class GPTSoVITSModel(PreTrainedModel):
     # ===
     # ======适配混合语种输出======
 
-    def infer(self, text, text_language="zh",
+    def infer(self, text, tokenizer, text_language="zh",
                     how_to_cut="凑四句一切", 
                     top_k=20, top_p=0.6, temperature=0.6, 
                     # 关于上面三个参数 https://github.com/RVC-Boss/GPT-SoVITS/pull/457
                     # 可以通过降低温度，降低top_p,top_k 提升模型输出内容的一致性
-                    ref_free = False): # 在不知道参考音频文本的情况下进行推理
+                    ref_free = False) -> tuple[np.ndarray,float|int]: # 在不知道参考音频文本的情况下进行推理
         
         # ====== 函数内变量 ======
         # ===
@@ -543,7 +501,7 @@ class GPTSoVITSModel(PreTrainedModel):
         dtype = self.dtype
 
         hz = 50
-        max_sec = self.config['data']['max_sec']
+        max_sec = self.gpt_config['data']['max_sec']
         # ===
         # ====== 函数内变量 ======
 
@@ -617,7 +575,7 @@ class GPTSoVITSModel(PreTrainedModel):
             # 处理参考语音(Get_bert_final) 输入文字素材phones1,word2ph1,norm_text1
             # 得到bert表示
             # ->bert1
-            bert1=self.get_bert_final(phones1, word2ph1, norm_text1,prompt_language).to(dtype)
+            bert1=self.get_bert_final(phones1, word2ph1, norm_text1,prompt_language,tokenizer).to(dtype)
 
         # for循环 处理推理文本,对texts中的每一段语句/短语
         # 处理文本(get_cleaned_text_final)得到文字素材
@@ -632,7 +590,7 @@ class GPTSoVITSModel(PreTrainedModel):
             if (text[-1] not in splits): text += "。" if text_language != "en" else "."
             # 【日志】print("实际输入的目标文本(每句):", text)
             phones2, word2ph2, norm_text2 = self.get_cleaned_text_final(text, text_language)
-            bert2 = self.get_bert_final(phones2, word2ph2, norm_text2, text_language).to(dtype)
+            bert2 = self.get_bert_final(phones2, word2ph2, norm_text2, text_language,tokenizer).to(dtype)
             if not ref_free:
                 bert = torch.cat([bert1, bert2], 1)
                 all_phoneme_ids = torch.LongTensor(phones1+phones2).to(device).unsqueeze(0)
